@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>CPU Scheduler Pro</title>
+
+  <!-- ================= GOOGLE FONT ================= -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #141e30, #243b55);
+      color: white;
+      min-height: 100vh;
+    }
+
+    /* Container */
+    .container {
+      width: 90%;
+      margin: 30px auto;
+    }
+
+    /* Header */
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    /* Card */
+    .card {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 20px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Inputs */
+    input {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+
+    /* Buttons */
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(45deg, #00c6ff, #0072ff);
+      color: white;
+      transition: 0.3s;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    .resetBtn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(45deg, #ff4d00c5, #ff0000);
+      color: white;
+      transition: 0.3s;
+    }
+
+    .resetBtn:hover {
+      transform: scale(1.05);
+    }
+
+
+    /* Table */
+    table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 10px;
+      text-align: center;
+    }
+
+    tr {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Gantt */
+    .gantt {
+      display: flex;
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+
+    .block {
+      min-width: 40px;
+      padding: 10px;
+      margin: 2px;
+      text-align: center;
+      border-radius: 8px;
+      animation: grow 0.5s ease;
+    }
+
+    @keyframes grow {
+      from {
+        transform: scaleX(0);
+      }
+
+      to {
+        transform: scaleX(1);
+      }
+    }
+
+    /* Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h1> CPU Scheduling Simulator</h1>
+
+    <!-- ================= INPUT ================= -->
+    <div class="card">
+      <input id="id" placeholder="ID">
+      <input id="arrival" placeholder="Arrival">
+      <input id="burst" placeholder="Burst">
+      <input id="priority" placeholder="Priority">
+
+      <button onclick="addProcess()">➕ Add</button>
+      <button onclick="calculate()">⚡ Calculate</button>
+      <button onclick="resetInputs()" class="resetBtn">🗑️ Reset</button>
+    </div>
+
+    <!-- ================= TABLE ================= -->
+    <div class="card">
+      <h3>Processes</h3>
+      <table id="processTable">
+        <tr>
+          <th>ID</th>
+          <th>Arrival</th>
+          <th>Burst</th>
+          <th>Priority</th>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ================= RESULTS ================= -->
+    <div class="grid">
+
+      <div class="card">
+        <h3>SJF</h3>
+        <div id="sjfTable"></div>
+        <div id="sjfGantt" class="gantt"></div>
+      </div>
+
+      <div class="card">
+        <h3>Priority</h3>
+        <div id="priorityTable"></div>
+        <div id="priorityGantt" class="gantt"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // ================= DATA =================
+    let processes = [];
+
+    // ================= ADD =================
+    function addProcess() {
+
+      let id = document.getElementById("id").value.trim();
+      let arrival = document.getElementById("arrival").value.trim();
+      let burst = document.getElementById("burst").value.trim();
+      let priority = document.getElementById("priority").value.trim();
+
+      // ================= VALIDATION =================
+
+      if (!id || arrival === "" || burst === "" || priority === "") {
+        alert("All fields are required!");
+        return;
+      }
+
+      // numbers only
+      if (isNaN(arrival) || isNaN(burst) || isNaN(priority)) {
+        alert("Arrival, Burst and Priority must be numeric!");
+        return;
+      }
+
+      arrival = Number(arrival);
+      burst = Number(burst);
+      priority = Number(priority);
+
+      // integer check
+      if (!Number.isInteger(arrival) ||
+        !Number.isInteger(burst) ||
+        !Number.isInteger(priority)) {
+        alert("Only integer values allowed!");
+        return;
+      }
+
+      // negative checks
+      if (arrival < 0) {
+        alert("Arrival time cannot be negative!");
+        return;
+      }
+
+      if (burst <= 0) {
+        alert("Burst time must be greater than 0!");
+        return;
+      }
+
+      if (priority < 0) {
+        alert("Priority cannot be negative!");
+        return;
+      }
+
+      // duplicate ID check
+      let exists = processes.some(p => p.id.toLowerCase() === id.toLowerCase());
+
+      if (exists) {
+        alert("Process ID already exists!");
+        return;
+      }
+
+      // ================= ADD PROCESS =================
+
+      processes.push({
+        id,
+        arrival,
+        burst,
+        priority
+      });
+
+      document.getElementById("processTable").innerHTML += `
+    <tr>
+      <td>${id}</td>
+      <td>${arrival}</td>
+      <td>${burst}</td>
+      <td>${priority}</td>
+    </tr>
+  `;
+
+      // clear inputs
+      document.querySelectorAll("input").forEach(input => {
+        input.value = "";
+      });
+    }
+
+    // ================= CALCULATE =================
+    function calculate() {
+
+      if (processes.length === 0) {
+        alert("Please add at least one process!");
+        return;
+      }
+
+      let sjf = sjfPreemptive(processes);
+      let pr = priorityPreemptive(processes);
+
+      renderTable("sjfTable", sjf);
+      animateGantt("sjfGantt", sjf.gantt);
+
+      renderTable("priorityTable", pr);
+      animateGantt("priorityGantt", pr.gantt);
+    }
+
+    // ================= Reset =================
+    function resetInputs() {
+      document.querySelectorAll("input").forEach(input => {
+        input.value = "";
+      });
+    }
+
+    // ================= TABLE =================
+    function renderTable(id, result) {
+      let html = `<table>
+    <tr><th>ID</th><th>WT</th><th>TAT</th><th>RT</th></tr>`;
+
+      result.table.forEach(p => {
+        html += `<tr>
+      <td>${p.id}</td>
+      <td>${p.WT}</td>
+      <td>${p.TAT}</td>
+      <td>${p.RT}</td>
+    </tr>`;
+      });
+
+      html += `</table>
+  <p>Avg WT: ${result.avgWT} | Avg TAT: ${result.avgTAT}</p>`;
+
+      document.getElementById(id).innerHTML = html;
+    }
+
+    // ================= ANIMATED GANTT =================
+    function animateGantt(id, gantt) {
+      let container = document.getElementById(id);
+      container.innerHTML = "";
+
+      gantt.forEach((g, i) => {
+        setTimeout(() => {
+          let block = document.createElement("div");
+          block.className = "block";
+          block.style.background = getColor(g.id);
+          block.style.width = (g.end - g.start) * 40 + "px";
+          block.innerHTML = `${g.id}<br>${g.start}-${g.end}`;
+          container.appendChild(block);
+        }, i * 200);
+      });
+    }
+
+    // ================= COLOR =================
+    function getColor(id) {
+      const colors = ["#ff6b6b", "#4ecdc4", "#ffe66d", "#5f27cd", "#1dd1a1"];
+      return colors[id.charCodeAt(1) % colors.length];
+    }
+
+    // =================================================
+    // 🔥 خوارزمياتك (عضو 3 و 4) — متلمسين هنا
+    // =================================================
+
+    // ===== SJF =====
+    function sjfPreemptive(processes) {
+      let procs = processes.map(p => ({ ...p, remaining: p.burst, startTime: null, finishTime: 0 }));
+      let time = 0, completed = 0, gantt = [], last = null;
+
+      while (completed < procs.length) {
+        let available = procs.filter(p => p.arrival <= time && p.remaining > 0);
+        if (!available.length) { time++; last = null; continue; }
+
+        available.sort((a, b) => {
+
+          if (a.remaining !== b.remaining)
+            return a.remaining - b.remaining;
+
+          if (a.arrival !== b.arrival)
+            return a.arrival - b.arrival;
+
+          return a.id.localeCompare(b.id);
+        });
+
+        let cur = available[0];
+
+        if (cur.startTime === null) cur.startTime = time;
+
+        if (!last || last.id !== cur.id) {
+          gantt.push({ id: cur.id, start: time, end: time + 1 });
+        } else gantt[gantt.length - 1].end++;
+
+        last = cur;
+        cur.remaining--;
+        time++;
+
+        if (cur.remaining === 0) {
+          cur.finishTime = time;
+          completed++;
+        }
+      }
+      return buildResult(procs, gantt);
+    }
+
+    // ===== PRIORITY =====
+    function priorityPreemptive(processes) {
+      let procs = processes.map(p => ({ ...p, remaining: p.burst, startTime: null, finishTime: 0 }));
+      let time = 0, completed = 0, gantt = [], last = null;
+
+      while (completed < procs.length) {
+        let available = procs.filter(p => p.arrival <= time && p.remaining > 0);
+        if (!available.length) { time++; last = null; continue; }
+
+        available.sort((a, b) => {
+          if (a.priority !== b.priority)
+            return a.priority - b.priority;
+
+          if (a.arrival !== b.arrival)
+            return a.arrival - b.arrival;
+
+          return a.id.localeCompare(b.id);
+        });
+
+        let cur = available[0];
+
+        if (cur.startTime === null) cur.startTime = time;
+
+        if (!last || last.id !== cur.id) {
+          gantt.push({ id: cur.id, start: time, end: time + 1 });
+        } else gantt[gantt.length - 1].end++;
+
+        last = cur;
+        cur.remaining--;
+        time++;
+
+        if (cur.remaining === 0) {
+          cur.finishTime = time;
+          completed++;
+        }
+      }
+      return buildResult(procs, gantt);
+    }
+
+    // ===== SHARED =====
+    function buildResult(procs, gantt) {
+      let totalWT = 0, totalTAT = 0, totalRT = 0;
+
+      let table = procs.map(p => {
+        let TAT = p.finishTime - p.arrival;
+        let WT = TAT - p.burst;
+        let RT = p.startTime - p.arrival;
+
+        totalWT += WT; totalTAT += TAT; totalRT += RT;
+
+        return { id: p.id, WT, TAT, RT };
+      });
+
+      return {
+        gantt,
+        table,
+        avgWT: (totalWT / procs.length).toFixed(2),
+        avgTAT: (totalTAT / procs.length).toFixed(2),
+        avgRT: (totalRT / procs.length).toFixed(2)
+      };
+    }
+
+  </script>
+
+</body>
+
+</html>
