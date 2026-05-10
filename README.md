@@ -142,11 +142,14 @@ The project highlights the trade-off between:
 # Team Members
 
 | Name | ID |
+
 | Mostafa Ahmed Gad | 20240954 |
 
 | Omar Hoassam Mohammed | 20240627 |
 
 | Marwan Awad Abd Al-Galil | 20240921 |
+
 | Adham Ibrahim Saied | 20240103 |
+
 | Mohammed AbdulNasser Ali Atta | 20240850 |
 | Omar Wael Mohammed | 20230381 |
